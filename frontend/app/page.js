@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 export default function Home() {
   const [transactions, setTransactions] = useState([]);
+  const [vectorResults, setVectorResults] = useState([]);
 
   useEffect(() => {
     fetch('/api/transactions')
@@ -12,10 +13,10 @@ export default function Home() {
       });
   }, []);
 
-  const handleTransfer = async (e) => {
-    e.preventDefault();
-    // In a full build, this will call a POST route to execute the process_transfer stored procedure
-    alert("Transfer initiated! This will trigger the Audit_Log."); 
+  const runVectorSearch = async () => {
+    const res = await fetch('/api/vector-search');
+    const data = await res.json();
+    if (data.success) setVectorResults(data.data);
   };
 
   return (
@@ -23,17 +24,23 @@ export default function Home() {
       <h1>Fraud Detection Dashboard</h1>
       
       <div style={{ margin: '2rem 0', padding: '1rem', border: '1px solid #ccc' }}>
-        <h3>Initiate Transfer</h3>
-        <form onSubmit={handleTransfer}>
-          <input type="number" placeholder="Sender ID (e.g., 1)" required style={{ marginRight: '10px' }} />
-          <input type="number" placeholder="Receiver ID (e.g., 2)" required style={{ marginRight: '10px' }} />
-          <input type="number" placeholder="Amount" required style={{ marginRight: '10px' }} />
-          <button type="submit">Send Funds</button>
-        </form>
+        <h3>Behavioral Anomaly Detection (pgvector)</h3>
+        <button onClick={runVectorSearch} style={{ padding: '10px', cursor: 'pointer' }}>
+          Run AI Vector Scan on New Attempt
+        </button>
+        {vectorResults.length > 0 && (
+          <ul style={{ marginTop: '1rem' }}>
+            {vectorResults.map((v) => (
+              <li key={v.transaction_id} style={{ color: v.distance < 0.5 ? 'red' : 'green' }}>
+                Match vs Transaction ID {v.transaction_id} (${v.amount}) - Distance Score: {v.distance.toFixed(4)} 
+                {v.distance < 0.5 ? ' (HIGH RISK)' : ' (SAFE)'}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <table style={{ width: '100%', textAlign: 'left' }}>
-        {/* Existing table code here */}
         <thead>
           <tr><th>ID</th><th>Sender</th><th>Amount</th><th>Status</th></tr>
         </thead>
